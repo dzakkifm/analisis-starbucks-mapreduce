@@ -1,78 +1,81 @@
 
-def generate_business_insights(rating_result, word_counts_by_group):
-    """
-    Menghasilkan insight bisnis berdasarkan hasil analisis rating
-    dan frekuensi kata dari MapReduce.
-    """
-
+def generate_business_insights(
+    rating_result,
+    word_counts_by_group,
+    product_result=None,
+    service_result=None,
+    location_result=None
+):
     insights = []
 
+    # 1. Customer Satisfaction
+    group_counts = rating_result["group_counts"]
+    group_percentages = rating_result["group_percentages"]
+
+    low_count = group_counts["low"]
+    medium_count = group_counts["medium"]
+    high_count = group_counts["high"]
+
+    low_percentage = group_percentages["low"]
+    high_percentage = group_percentages["high"]
+
     average_rating = rating_result["average_rating"]
-    rating_groups = rating_result["group_counts"]
-    total_ratings = rating_result["total_reviews"]
 
-    low_count = rating_groups.get("low", 0)
-    medium_count = rating_groups.get("medium", 0)
-    high_count = rating_groups.get("high", 0)
+    insights.append(
+        f"Customer Satisfaction: Kelompok rating LOW memiliki "
+        f"{low_count} ulasan ({low_percentage:.2f}%). "
+        f"Rata-rata rating keseluruhan adalah {average_rating:.2f}."
+    )
 
-    low_percentage = (low_count / total_ratings * 100) if total_ratings else 0
-    high_percentage = (high_count / total_ratings * 100) if total_ratings else 0
+    insights.append(
+        f"Sebanyak {high_count} ulasan ({high_percentage:.2f}%) "
+        f"termasuk kelompok HIGH, sedangkan kelompok MEDIUM "
+        f"memiliki {medium_count} ulasan."
+    )
 
-    # Insight 1: Kondisi kepuasan pelanggan
-    insights.append({
-        "judul": "Dominasi Rating Rendah",
-        "temuan": (
-            f"Sebanyak {low_percentage:.2f}% ulasan dengan rating valid "
-            "termasuk dalam kelompok rating rendah (1–2)."
-        ),
-        "rekomendasi": (
-            "Evaluasi kualitas pelayanan, proses pemesanan, dan pengalaman "
-            "pelanggan untuk menemukan faktor yang menyebabkan ketidakpuasan."
-        )
-    })
+    # 2. Product Discussion
+    if product_result:
+        top_products = product_result["top_products"]
 
-    # Insight 2: Rating tinggi
-    insights.append({
-        "judul": "Peluang Mempertahankan Pengalaman Positif",
-        "temuan": (
-            f"Sebanyak {high_percentage:.2f}% ulasan dengan rating valid "
-            "termasuk dalam kelompok rating tinggi (4–5)."
-        ),
-        "rekomendasi": (
-            "Identifikasi aspek layanan yang sering muncul dalam ulasan "
-            "positif dan pertahankan konsistensi kualitasnya."
-        )
-    })
+        if top_products:
+            product_name, product_count = top_products[0]
 
-    # Insight 3: Kata yang sering muncul pada ulasan rendah
-    low_words = word_counts_by_group.get("low", {})
-    top_low_words = sorted(
-        low_words.items(),
-        key=lambda item: item[1],
-        reverse=True
-    )[:10]
+            insights.append(
+                f"Product Discussion: Istilah produk yang paling "
+                f"sering disebut adalah '{product_name}' dengan "
+                f"{product_count} kemunculan."
+            )
 
-    insights.append({
-        "judul": "Topik pada Ulasan Rating Rendah",
-        "temuan": (
-            "Kata yang paling sering muncul: "
-            + ", ".join(word for word, count in top_low_words[:5])
-        ),
-        "rekomendasi": (
-            "Gunakan kata-kata tersebut sebagai petunjuk awal untuk "
-            "meninjau topik keluhan pelanggan. Periksa kembali konteks "
-            "kalimat sebelum mengambil keputusan."
-        )
-    })
+    # 3. Service Quality
+    if service_result:
+        top_service = service_result["top_service_words"]
 
-    # Insight 4: Rata-rata rating
-    insights.append({
-        "judul": "Evaluasi Rata-rata Rating",
-        "temuan": f"Rata-rata rating pelanggan adalah {average_rating:.2f} dari 5.",
-        "rekomendasi": (
-            "Lakukan evaluasi berkala terhadap kualitas produk dan pelayanan, "
-            "kemudian pantau perubahan rating setelah perbaikan dilakukan."
-        )
-    })
+        if top_service:
+            service_name, service_count = top_service[0]
+
+            insights.append(
+                f"Service Quality: Istilah pelayanan yang paling "
+                f"sering muncul adalah '{service_name}' dengan "
+                f"{service_count} kemunculan."
+            )
+
+    # 4. Location Analysis
+    if location_result:
+        top_locations = location_result["top_locations"]
+
+        if not top_locations.empty:
+            top_location = top_locations.iloc[0]
+
+            insights.append(
+                f"Location Analysis: Lokasi dengan jumlah ulasan "
+                f"terbanyak adalah '{top_location['location']}' "
+                f"dengan {top_location['total_reviews']} ulasan."
+            )
+
+    insights.append(
+        "Catatan: Hasil analisis menggambarkan dataset ulasan "
+        "yang digunakan dan tidak mewakili seluruh pelanggan "
+        "atau gerai Starbucks."
+    )
 
     return insights
